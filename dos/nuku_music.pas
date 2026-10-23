@@ -10,7 +10,7 @@ procedure music_play_song(fname:PChar);
 procedure music_play_sndfx(p_which:integer);
 
 implementation
-uses math,mikmod_dos;
+uses math,dos,mikmod_dos;
 
 var
   module:PMODULE;
@@ -45,8 +45,22 @@ begin
     Sample_Play(samples[p_which], 0, 0);
 end;
 
+function device_name(d:word):string;
+begin
+  case d of
+    1: device_name:='Gravis Ultrasound';
+    2: device_name:='Windows Sound System';
+    3: device_name:='Sound Blaster';
+  else device_name:='none (silent)';
+  end;
+end;
+
+var report:string;
+
 procedure shutdown_sound;
 begin
+  { printed after the game is back in text mode, so it stays on screen }
+  writeln(StdErr, report);
   if sound_ok then
   begin
     if module<>nil then
@@ -72,10 +86,16 @@ initialization
 
   sound_ok := MikMod_Init('') = 0;
   if not sound_ok then
-    writeln('Sound init failed: ', MikMod_strerror(MikMod_errno))
+    report:='NUKU sound: init failed: '+strpas(MikMod_strerror(MikMod_errno))
+  else
+    report:='NUKU sound: '+device_name(md_device);
+  report:=report+'   BLASTER='+GetEnv('BLASTER');
+  if GetEnv('ULTRASND')<>'' then report:=report+'  ULTRASND='+GetEnv('ULTRASND');
+  writeln(report);
+  Flush(Output);
+  if not sound_ok then AddExitProc(@shutdown_sound)
   else
   begin
-    writeln('Sound device #', md_device);
     for idx:=1 to 7 do
       samples[idx]:=Sample_Load(samplenames[idx]);
     MikMod_SetNumVoices(-1, 2);
