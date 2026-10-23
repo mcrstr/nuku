@@ -1,6 +1,6 @@
 unit nuku_music;
 interface
-uses mikmod,cmem;
+uses mikmod,cmem,math;
 
 procedure music_poll();
 procedure music_play_song(fname:PCHAR);
@@ -51,6 +51,8 @@ initialization
 
 
 begin
+        { C libraries expect FPU exceptions to be masked }
+        SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]);
 
         module:=nil;
 

@@ -5,8 +5,7 @@ uses
   nukusupl,
   fastkeys,
   nuku_keyboard,
-  sdl_keyboard,
-  sdl_timer,
+  sdl,
   nuku_music;
 
 var fivelevs:array [1..5] of byte;
@@ -74,7 +73,7 @@ function enter_password :byte;
 var pass,i,j,sli:word;
     tmp:byte;
     op:byte;
-    whichk:SDLKey;
+    whichk:TSDLKey;
 Begin
 op:=1;
 ReadPCXp('gamesel.pcx',pag2^[0]);

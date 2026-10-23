@@ -53,12 +53,6 @@ uses nuku_screen;
 
 Procedure PortOut(Portz:word; Val:byte);
 Begin
-asm
-        MOV             DX,[portz]
-        MOV             AL,[val]
-        OUT             DX,AL
-
-end;
 end;
 Procedure SetRGB(col,r,g,b:byte);
 Begin
@@ -81,16 +75,8 @@ end;
 end;
 
 function port(numb:word) :byte;
-var vd:byte;
-    np:word;
 Begin
-np:=numb;
-asm
-mov dx,np
-in al,dx
-mov vd,al
-end;
-port:=vd;
+port:=0;
 end;
 
 function Givemeallmili(min,sec,fr:longint) : longint;
@@ -178,41 +164,12 @@ end;}
 end;
 
 Procedure MoveWPal(Source,dest:pointer; amount:word);
-var amo:word;
+var i:longint;
+    s,d,pal:PByte;
 Begin
-amo:=amount;
-asm
-push edi
-push esi
-mov esi,source
-mov edi,dest
-mov ebx,Vpalette
-xor ecx,ecx
-mov cx,amo
-@loopal:
-xor eax,eax
-mov al,[esi]
-push ebx
-xchg ebx,esi
-add esi,eax
-{3 times}
-mov al,[esi]
-mov [edi],al
-inc esi
-mov al,[esi]
-mov [edi],al
-inc esi
-mov al,[esi]
-mov [edi],al
-inc esi
-{}
-xchg ebx,esi
-inc esi
-pop ebx
-loop @loopal
-pop esi
-pop edi
-end;
+s:=PByte(source); d:=PByte(dest); pal:=PByte(Vpalette);
+for i:=0 to longint(amount)-1 do
+  d^:=pal[longint(s[i])+2];
 end;
 
 Procedure ZBitmapM(Sourc:Pointer; X,Y,xl,yl,xt,yt:Word; dest:pointer);
@@ -285,99 +242,39 @@ end;
 
 
 Procedure Perturb(Var s:word);
-var r:word;
+var r,c:longword;
 Begin
-r:=s;
-asm
-Mov dx,r
-Xor dx,0aa55h
-SHL dx,1
-Adc dx,$118
-Mov r,dx;
-end;
-s:=r;
+r:=s xor $AA55;
+c:=(r shr 15) and 1;
+r:=(r shl 1) and $FFFF;
+r:=(r+$118+c) and $FFFF;
+s:=word(r);
 end;
 
 
 
 
 Procedure MoveN(A,B:Pointer; Cb:Word);
+var i:longint; sa,db:PByte;
 begin
-asm
-push edi
-push esi
-cmp cb,0
-je @Exit
-mov esi,A
-mov edi,B
-xor ecx,ecx
-mov cx,cb
-@repe:
-mov al,[esi]
-cmp al,0
-je @pass
-mov [edi],al
-@pass:
-inc edi
-inc esi
-Loop @repe
-@Exit:
-pop esi
-pop edi
-end;
+sa:=PByte(A); db:=PByte(B);
+for i:=0 to longint(cb)-1 do
+  if sa[i]<>0 then db[i]:=sa[i];
 end;
 
 Procedure MovesI(A,B:Pointer; Cb:Word);
+var i:longint; sa,db:PByte;
 begin
-asm
-push edi
-push esi
-cmp cb,0
-je @Exit
-mov esi,A
-mov edi,B
-xor ecx,ecx
-mov cx,cb
-@repe:
-mov al,[esi]
-cmp al,0
-je @pass
-mov [edi],al
-@pass:
-inc edi
-dec esi
-Loop @repe
-@Exit:
-pop esi
-pop edi
-end;
+sa:=PByte(A); db:=PByte(B);
+for i:=0 to longint(cb)-1 do
+  if (sa-i)^<>0 then db[i]:=(sa-i)^;
 end;
 Procedure MoveI(A,B:Pointer; Cb:Word);
+var i:longint; sa,db:PByte;
 begin
-asm
-cmp cb,0
-je @Exit
-push esi
-push edi
-mov esi,A
-xor eax,eax
-mov ax,cb
-add esi,eax
-mov edi,B
-mov ecx,eax
-@repe:
-mov al,[esi]
-cmp al,0
-je @pass
-mov [edi],al
-@pass:
-inc edi
-dec esi
-Loop @repe
-pop edi
-pop esi
-@Exit:
-end;
+sa:=PByte(A)+cb; db:=PByte(B);
+for i:=0 to longint(cb)-1 do
+  if (sa-i)^<>0 then db[i]:=(sa-i)^;
 end;
 
 function dista (x1,y1,x2,y2:longint) :longint;
@@ -617,10 +514,6 @@ if not t then Begin
                    inc(intents);
                    end;
 if intents>4 then Begin
-                  asm
-                  mov ax,3
-                  int 10h
-                  end;
                   Writeln('No se pudo encontrar el cd de NuKu');
                   halt(1);
                   end;

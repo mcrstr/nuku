@@ -595,7 +595,11 @@ begin
   if result=false then
   begin
     //libmikmod:=loadlibrary('libmikmod'+{$ifdef cpu32}'32'{$else}'64'{$endif}+'.dll');
+    {$ifdef windows}
+    libmikmod:=loadlibrary('libmikmod-3.dll');
+    {$else}
     libmikmod:=loadlibrary('libmikmod.so.3');
+    {$endif}
 
     farproc(MikMod_RegisterAllDrivers):=GetProcedureAddress(libmikmod, 'MikMod_RegisterAllDrivers');
     farproc(MikMod_RegisterAllLoaders):=GetProcedureAddress(libmikmod, 'MikMod_RegisterAllLoaders');

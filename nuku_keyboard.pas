@@ -1,6 +1,7 @@
 unit nuku_keyboard;
 interface
-uses sdl,sdl_events,sdl_keyboard;
+uses sdl;
+const SDLK_LAST = 323; { value from SDL 1.2's SDL_keysym.h }
 var key:array [0..SDLK_LAST] of boolean;
 const scup = SDLK_UP;
       scdown = SDLK_DOWN;
@@ -19,7 +20,7 @@ uses nuku_music,nuku_screen;
 
 procedure poll_keyboard;
 
-var event:Sdl_Event;
+var event:TSDL_Event;
 begin
 
 
@@ -29,7 +30,7 @@ begin
 
 		{writeln('pressed key with scancode',event.key.keysym.scancode);}
 
-		case (event.eventtype) of 
+		case (event.type_) of 
 
 			SDL_KEYDOWN:begin
 
@@ -42,7 +43,7 @@ begin
 			
 				key[event.key.keysym.sym]:=false;
 			end;
-			SDL_EVENTQUIT:begin
+			SDL_QUITEV:begin
 			
 				SDL_Quit();
                                 halt(0);

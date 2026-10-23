@@ -1,6 +1,6 @@
 unit nuku_screen;
 interface
-uses sdl,sdl_video,nukusupl,copy_and_filter_pas;
+uses sdl,nukusupl,copy_and_filter_pas;
 
 const 
 
@@ -8,9 +8,9 @@ const
       SCREEN_HEIGHT = 400;
 
 
-var screen:^SDL_Surface;
+var screen:PSDL_Surface;
     color_palette:array[0 .. 255] of word;
-    color_palette_sdl:^SDL_ColorArray;
+    color_palette_sdl:PSDL_ColorArray;
 
 procedure toggle_eagle();
 
@@ -76,7 +76,7 @@ begin
 		SDL_UnlockSurface(screen);
 	end;
 
-	SDL_SetColors(screen,color_palette_sdl^,0,256);
+	SDL_SetColors(screen,@color_palette_sdl^[0],0,256);
 	SDL_Updaterect(screen,0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
 
         music_poll(); { baad hax0r }
@@ -100,7 +100,7 @@ begin
         result:=false;
     end;
 
-    getmem(color_palette_sdl,256*sizeof(SDL_Color));
+    getmem(color_palette_sdl,256*sizeof(TSDL_Color));
     use_eagle:=true;
 	
 
