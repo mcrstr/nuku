@@ -1,7 +1,8 @@
 {topimp}
 Unit Nukunit;
+{$PACKRECORDS 1}
 interface
-Uses nukusupl,fastkeys,nuku_screen,nuku_keyboard,SDL_Timer,nuku_music,sdl_keyboard;
+Uses nukusupl,fastkeys,nuku_screen,nuku_keyboard,sdl,nuku_music;
 
 
 const {amax=15;}
@@ -100,7 +101,7 @@ Type
       Data=Array[0..45000] of byte;
       DataV=Array[0..22499] of byte;
      Malos = array [1..27000] of byte;
-     letra_rec=array [0..1959] of byte;
+     letra_rec=array [0..2015] of byte; {was 0..1959, font loader writes 36*56 bytes}
      soniditos=array [0..16000] of byte;
      ardi = array [0..29601] of byte;
      Sce=Array[0..523,0..124] of byte;
@@ -299,12 +300,9 @@ end;
 
 Procedure INT8PROC;
 Begin
-asm
-inc timervar
-inc soundvar
-inc timecd
-{pushf}
-end;
+inc(timervar);
+inc(soundvar);
+inc(timecd);
 TIMERC;
 end;
 
@@ -415,42 +413,12 @@ end; *)
 
 
 Procedure boxblue(line:word);
+var p:PByte;
+    i,st:longint;
 begin
-asm
-push edi
-push esi
-mov esi, blus
-mov edi, pag2
-xor eax,eax
-xor ebx,ebx
-xor ecx,ecx
-Mov ax,line
-mov bx,320
-mul bx
-add edi,eax
-Mov cx,64000
-sub cx,ax
-shr cx,1
-xor ax,ax
-@repe:
- mov bx, [edi]
- push esi
- mov al,bl
- add esi,eax
- mov dl,[esi]
- pop esi
- push esi
- mov al,bh
- add esi,eax
- mov dh,[esi]
- pop esi
- mov [edi],dx
- add edi,2
-loop @repe
-pop esi
-pop edi
-end;
-
+p:=PByte(pag2);
+st:=(longint(line)*320) and $FFFF;
+for i:=st to 63999 do p[i]:=blus^[p[i]];
 end;
 
 Procedure copyCACA2;
@@ -1129,59 +1097,11 @@ if (xu>=0) and (xu+(24)<320) then begin
              ye:=xu;
              end;
 
-asm
-push edi
-push esi
-mov esi,tiles
-xor eax,eax
-xor ebx,ebx
-xor ecx,ecx
-xor edx,edx
-mov bx,sour {bx va a hacer de I en el for}
-{start}
-mov al,t
-mov dx,625
-mul dx
-add ax,bye
-add esi,eax
-{pone SI en el inicio del tile a copiar+ en ke byte lo copio}
-mov edi,pag2
-xor eax,eax
-mov ax,320
-mul sour
-add ax,ye
-add edi,eax
-{pone DI al inicio de donde lo pongo en video}
-@Loop1:
-xor eax,eax
-mov cx,byt {Cx=Cuantos copio}
-mov ax,bx
-sub ax,yu
-mov dx,25
-mul dx
-push edi
-push esi
-and eax,1111111111111111b
-add esi,eax
-{le agrego una linea si paso de linea..}
-@loop2:
-mov al,[esi]
-cmp al,0
-je @nocopy
-mov [edi],al
-@nocopy:
-inc esi
-inc edi
-loop @loop2                 
-pop esi
-pop edi
-add edi,320
-inc bx
-cmp bx,des
-jle @loop1
-pop esi
-pop edi
-end;
+i:=sour;
+repeat
+  MoveN(@tiles^[((longint(t)*625+bye) and $FFFF)+(((longint(i)-yu)*25) and $FFFF)],@pag2^[i][ye],byt);
+  inc(i);
+until i>des;
 
 {for i:=sour to des do MoveN(@tiles^[(t*625+(i-yu)*25+bye)],@pag2^[i] [ye],byt);}
 
@@ -3116,7 +3036,7 @@ var i,j,k,l,count:Word;
 	getblu;
 	Assign(Fil,MAPN+'.map');
 	reset(fil,1);
-	BlockRead(Fil,PAg2^[0,0],64000,tmpsht);
+	BlockRead(Fil,PAg2^[0,0],65500,tmpsht); {was 64000: the .map files hold 524*125 bytes}
 	count:=0;
 	For i:=0 to 523 do 
 	   for j:=0 to 124 do 

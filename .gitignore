@@ -7,3 +7,6 @@ nuku
 
 # Should be kept but not modified
 TIEMPOS.TRK
+build/
+buildw/
+build-dos/

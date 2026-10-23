@@ -1,6 +1,9 @@
 unit nuku_keyboard;
 interface
-uses sdl,sdl_events,sdl_keyboard;
+uses sdl;
+
+const SDLK_LAST = 512;
+
 var key:array [0..SDLK_LAST] of boolean;
 const scup = SDLK_UP;
       scdown = SDLK_DOWN;
@@ -18,51 +21,41 @@ uses nuku_music,nuku_screen;
 
 
 procedure poll_keyboard;
-
-var event:Sdl_Event;
+var event:TSDL_Event;
+    sym:longword;
 begin
-
-
-
-	while( SDL_PollEvent( @event )<>0 ) do
+	while SDL_PollEvent(@event)<>0 do
 	begin
-
-		{writeln('pressed key with scancode',event.key.keysym.scancode);}
-
-		case (event.eventtype) of 
-
+		case event.type_ of
 			SDL_KEYDOWN:begin
-
-				key[event.key.keysym.sym]:=true;
-                                if (event.key.keysym.sym=SDLK_F8) then begin
-                                        nuku_screen.toggle_eagle();
+				sym:=event.key.keysym.sym;
+				if (sym=SDLK_RETURN) and ((event.key.keysym.modifier and KMOD_ALT)<>0) then
+				begin
+					nuku_screen.toggle_fullscreen();
+					continue;
+				end;
+				if sym<=SDLK_LAST then key[sym]:=true;
+                                case sym of
+                                        SDLK_F8:nuku_screen.toggle_eagle();
+                                        SDLK_F9:nuku_screen.cycle_scale();
+                                        SDLK_F10:nuku_screen.toggle_fullscreen();
                                 end;
 			end;
 			SDL_KEYUP:begin
-			
-				key[event.key.keysym.sym]:=false;
+				sym:=event.key.keysym.sym;
+				if sym<=SDLK_LAST then key[sym]:=false;
 			end;
-			SDL_EVENTQUIT:begin
-			
+			SDL_QUITEV:begin
 				SDL_Quit();
                                 halt(0);
 			end;
 		end;
 	end;
         music_poll();
-
-			
 end;
 
 var i:integer;
 
 initialization
-
-
-
-begin
-
-	for i:=0 to 255 do key[i]:=false;
-
-end;
+	for i:=0 to SDLK_LAST do key[i]:=false;
 end.

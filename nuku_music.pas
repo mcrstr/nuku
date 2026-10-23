@@ -1,6 +1,6 @@
 unit nuku_music;
 interface
-uses mikmod,cmem;
+uses cmem,math,mikmod;
 
 procedure music_poll();
 procedure music_play_song(fname:PCHAR);
@@ -51,6 +51,7 @@ initialization
 
 
 begin
+        SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]);
 
         module:=nil;
 

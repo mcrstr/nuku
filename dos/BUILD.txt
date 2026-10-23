@@ -1,0 +1,26 @@
+Сборка NUKU.EXE для DOS (32-битный защищённый режим, go32v2)
+
+Общий игровой код (nuku.pas, nukumain, nukunit, nukusupl, fastkeys, nuku_log)
+одинаков для всех платформ. Под DOS вместо SDL подставляются модули из этой папки:
+  sdl.pas            коды клавиш, часы в миллисекундах (BIOS-тики + счётчик PIT), задержка
+  nuku_screen.pas    VGA mode 13h, палитра через порты $3C8/$3C9, копирование в A000:0000
+  nuku_keyboard.pas  свой обработчик IRQ1, очередь скан-кодов
+  nuku_music.pas     libmikmod (Sound Blaster, GUS, WSS)
+  mikmod_dos.pas     статическая привязка к libmikmod.a
+
+Что нужно:
+1. Free Pascal 3.2.2 с кросс-компилятором под go32v2:
+     git clone --depth 1 --branch release_3_2_2 https://github.com/fpc/FPCSource
+     make crossall CPU_TARGET=i386 OS_TARGET=go32v2 BINUTILSPREFIX=i586-pc-msdosdjgpp- FPC=ppcx64
+   Важно: в rtl/i386/i386.inc отключить USE_FASTMOVE для GO32V2 и пересобрать rtl.
+   Иначе Move копирует память через x87 fild/fistp, а DOSBox эмулирует FPU
+   с точностью double и портит каждый восьмой байт (вертикальные полосы на экране).
+2. DJGPP (кросс-binutils, gcc, libc): https://github.com/andrewwutw/build-djgpp
+3. libmikmod (https://github.com/sezero/mikmod), libmikmod/dos:
+   в config.h закомментировать DRV_WAV, DRV_AIFF, DRV_RAW, затем
+     make -f Makefile.dj CROSS=i586-pc-msdosdjgpp
+4. Сборка:
+     FPC_CROSS=.../compiler/ppcross386 FPC_RTL=.../rtl/units/go32v2 \
+     DJGPP=.../djgpp MIKMOD_DOS=.../libmikmod/dos dos/build_dos.sh
+5. Для запуска нужен DPMI-сервер: HDPMI32.EXE из HX DOS Extender
+   (https://github.com/Baron-von-Riedesel/HX) или CWSDPMI.EXE.
