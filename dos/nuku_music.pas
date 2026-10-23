@@ -29,6 +29,7 @@ end;
 procedure music_play_song(fname:PChar);
 begin
   if not sound_ok then exit;
+  sb_lock;
   if module<>nil then
   begin
     Player_Stop();
@@ -36,13 +37,18 @@ begin
   end;
   module := Player_Load(fname, 64, 0);
   if module<>nil then Player_Start(module);
+  sb_unlock;
 end;
 
 procedure music_play_sndfx(p_which:integer);
 begin
   if not sound_ok then exit;
   if (p_which in [1..7]) and (samples[p_which]<>nil) then
+  begin
+    sb_lock;
     Sample_Play(samples[p_which], 0, 0);
+    sb_unlock;
+  end;
 end;
 
 function device_name(d:word):string;
@@ -63,6 +69,7 @@ begin
   writeln(StdErr, report);
   if sound_ok then
   begin
+    sb_lock;
     if module<>nil then
     begin
       Player_Stop();
@@ -70,6 +77,7 @@ begin
       module:=nil;
     end;
     MikMod_Exit();
+    sb_unlock;
     sound_ok:=false;
   end;
 end;

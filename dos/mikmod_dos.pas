@@ -33,6 +33,11 @@ procedure Player_Free(m:PMODULE); cdecl; external;
 function  Sample_Load(fname:PChar):PSAMPLE; cdecl; external;
 function  Sample_Play(s:PSAMPLE; start:longword; flags:byte):shortint; cdecl; external;
 
+{ patched libmikmod: keep the Sound Blaster IRQ mixer out while the
+  main program calls into the library }
+procedure sb_lock; cdecl; external;
+procedure sb_unlock; cdecl; external;
+
 var
   md_mode:word; cvar; external;
   md_mixfreq:word; cvar; external;

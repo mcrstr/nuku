@@ -17,6 +17,25 @@ index 0bf2893..df3a76b 100644
  
  /* Define if the Gravis UltraSound driver is compiled */
  #define DRV_ULTRA
+diff --git a/libmikmod/drivers/dos/dosdma.c b/libmikmod/drivers/dos/dosdma.c
+index 1d73658..414de83 100644
+--- a/libmikmod/drivers/dos/dosdma.c
++++ b/libmikmod/drivers/dos/dosdma.c
+@@ -124,8 +124,13 @@ dma_buffer *dma_allocate(unsigned int channel, unsigned int size)
+ 
+ 		/* If memory block contains a properly aligned portion, quit loop */
+ 		bound = (par + mask + 1) & ~mask;
+-		if (par + parsize <= bound)
++		if (par + parsize <= bound) {
++			/* Nuku DOS build: the block does not cross a DMA page boundary,
++			   so the buffer starts at the block itself. Upstream used the
++			   NEXT boundary here, i.e. memory outside the allocated block. */
++			bound = par;
+ 			break;
++		}
+ 		if (bound + parsize <= par + allocsize) {
+ 			par = bound;
+ 			break;
 diff --git a/libmikmod/drivers/dos/dosdma.h b/libmikmod/drivers/dos/dosdma.h
 index eac98d6..06fd162 100644
 --- a/libmikmod/drivers/dos/dosdma.h
@@ -55,10 +74,59 @@ index ff76ff3..c8a36c6 100644
  		address += cur_size;
  
 diff --git a/libmikmod/drivers/dos/dossb.c b/libmikmod/drivers/dos/dossb.c
-index 4361c1c..16e83b2 100644
+index 4361c1c..a6073d2 100644
 --- a/libmikmod/drivers/dos/dossb.c
 +++ b/libmikmod/drivers/dos/dossb.c
-@@ -99,6 +99,33 @@ static void NO_REORDER INTERRUPT_ATTRIBUTES sb_irq_end()
+@@ -68,6 +68,23 @@ static void nop (void);
+ #define nop()
+ #endif
+ 
++/* Nuku DOS build: the SB driver mixes audio inside its IRQ handler,
++   while the program changes songs and plays samples from the main code.
++   sb_lock()/sb_unlock() keep the handler from mixing during such calls. */
++static volatile int sb_locked = 0;
++volatile int sb_irqs_since_update = 0;
++
++void sb_lock()
++{
++	sb_locked++;
++}
++
++void sb_unlock()
++{
++	if (sb_locked > 0)
++		sb_locked--;
++}
++
+ static void INTERRUPT_ATTRIBUTES NO_REORDER sb_irq()
+ {
+ 	/* Make sure its not a spurious IRQ */
+@@ -89,9 +106,23 @@ static void INTERRUPT_ATTRIBUTES NO_REORDER sb_irq()
+ 	/* Send EOI */
+ 	irq_ack(sb.irq_handle);
+ 
++	/* Nuku DOS build: mixing happens in the main program (SB_Update). If it
++	   has not run for a while (level loading), play silence instead of
++	   looping the last quarter second of the buffer. */
++	if (++sb_irqs_since_update >= 3 && sb.dma_buff)
++		memset(dma_linear(sb.dma_buff), (sb.mode & SBMODE_SIGNED) ? 0 : 0x80,
++		       sb.dma_buff->size);
++
+ 	enable();
+-	if (sb.timer_callback)
++	if (sb.timer_callback && !sb_locked) {
++		/* Nuku DOS build: the mixer runs inside this interrupt, so keep the
++		   interrupted program's FPU state intact */
++		unsigned char fpu_state[108];
++		__asm__ __volatile__("fnsave %0" : "=m"(fpu_state));
++		__asm__ __volatile__("fninit");
+ 		sb.timer_callback();
++		__asm__ __volatile__("frstor %0" : : "m"(fpu_state));
++	}
+ }
+ 
+ static void NO_REORDER INTERRUPT_ATTRIBUTES sb_irq_end()
+@@ -99,6 +130,33 @@ static void NO_REORDER INTERRUPT_ATTRIBUTES sb_irq_end()
  	nop();
  }
  
@@ -92,7 +160,7 @@ index 4361c1c..16e83b2 100644
  static boolean __sb_reset()
  {
  	/* Disable the output */
-@@ -352,7 +379,7 @@ boolean sb_detect()
+@@ -352,7 +410,7 @@ boolean sb_detect()
  
  	if (sb.dspver >= SBVER_PRO)
  		sb.caps |= SBMODE_STEREO;
@@ -101,7 +169,7 @@ index 4361c1c..16e83b2 100644
  		sb.caps |= SBMODE_16BITS;
  	if (sb.dspver < SBVER_20)
  		sb.maxfreq_mono = 22222;
-@@ -489,9 +516,9 @@ boolean sb_start_dma(unsigned char mode, unsigned int freq)
+@@ -489,9 +547,9 @@ boolean sb_start_dma(unsigned char mode, unsigned int freq)
  	/* Fill DMA buffer with silence */
  	dmabuffsize = sb.dma_buff->size;
  	if (mode & SBMODE_SIGNED)
@@ -113,7 +181,7 @@ index 4361c1c..16e83b2 100644
  
  	/* Prime DMA for transfer */
  	dma_start(sb.dma_buff, dmabuffsize, DMA_MODE_WRITE | DMA_MODE_AUTOINIT);
-@@ -554,13 +581,18 @@ void sb_query_dma(unsigned int *dma_size, unsigned int *dma_pos)
+@@ -554,13 +612,18 @@ void sb_query_dma(unsigned int *dma_size, unsigned int *dma_pos)
  	*dma_size = sb.dma_buff->size;
  	/* It can happen we try to read DMA count when HI/LO bytes will be
  	   inconsistent */
@@ -133,6 +201,22 @@ index 4361c1c..16e83b2 100644
  	}
  	*dma_pos = *dma_size - dma_left;
  }
+diff --git a/libmikmod/drivers/dos/dossb.h b/libmikmod/drivers/dos/dossb.h
+index 8846d22..09c7bab 100644
+--- a/libmikmod/drivers/dos/dossb.h
++++ b/libmikmod/drivers/dos/dossb.h
+@@ -216,6 +216,11 @@ typedef struct __sb_state_s {
+ 
+ extern __sb_state sb;
+ 
++/* Nuku DOS build: keep the IRQ mixer out while the main code calls libmikmod */
++extern void sb_lock();
++extern void sb_unlock();
++extern volatile int sb_irqs_since_update;
++
+ #if !defined(__GNUC__) || (__GNUC__ < 3) || (__GNUC__ == 3 && __GNUC_MINOR__ == 0)
+ # define _func_noinline volatile /* match original code */
+ # define _func_noclone
 diff --git a/libmikmod/drivers/dos/doswss.c b/libmikmod/drivers/dos/doswss.c
 index 844e492..a581fa9 100644
 --- a/libmikmod/drivers/dos/doswss.c
@@ -150,10 +234,10 @@ index 844e492..a581fa9 100644
  	/* Check data size and build a WSSR_PLAY_FORMAT value accordingly */
  	wss.samples = dmabuffsize;
 diff --git a/libmikmod/drivers/drv_sb.c b/libmikmod/drivers/drv_sb.c
-index 2b76f8d..61d5f3a 100644
+index 2b76f8d..9e64519 100644
 --- a/libmikmod/drivers/drv_sb.c
 +++ b/libmikmod/drivers/drv_sb.c
-@@ -122,15 +122,15 @@ static void SB_Callback(void)
+@@ -122,21 +122,24 @@ static void SB_Callback(void)
  
  	/* If DMA pointer still didn't wrapped around ... */
  	if (dma_pos > buff_tail) {
@@ -172,11 +256,30 @@ index 2b76f8d..61d5f3a 100644
  	}
  }
  
+ static void SB_Update(void)
+ {
+-	/* Do nothing: the real update is done during SB interrupts */
++	/* Nuku DOS build: mix from the main program, the IRQ only acknowledges */
++	sb_irqs_since_update = 0;
++	if (sb.dma_buff)
++		SB_Callback();
+ }
+ 
+ static int SB_PlayStart (void)
+@@ -149,7 +152,7 @@ static int SB_PlayStart (void)
+ 
+ 	/* Set our routine to be called during SB IRQs */
+ 	buff_tail = 0;
+-	sb.timer_callback = SB_Callback;
++	sb.timer_callback = NULL;
+ 
+ 	/* Start cyclic DMA transfer */
+ 	if (!sb_start_dma(((md_mode & DMODE_16BITS) ? SBMODE_16BITS | SBMODE_SIGNED : 0) |
 diff --git a/libmikmod/drivers/drv_wss.c b/libmikmod/drivers/drv_wss.c
-index f2b012f..53ad3c8 100644
+index f2b012f..495472d 100644
 --- a/libmikmod/drivers/drv_wss.c
 +++ b/libmikmod/drivers/drv_wss.c
-@@ -105,15 +105,15 @@ static void WSS_Callback(void)
+@@ -105,21 +105,23 @@ static void WSS_Callback(void)
  
  	/* If DMA pointer still didn't wrapped around ... */
  	if (dma_pos > buff_tail) {
@@ -195,3 +298,21 @@ index f2b012f..53ad3c8 100644
  	}
  }
  
+ static void WSS_Update(void)
+ {
+-	/* Do nothing: the real update is done during SB interrupts */
++	/* Nuku DOS build: mix from the main program, not inside the IRQ */
++	if (wss.dma_buff)
++		WSS_Callback();
+ }
+ 
+ static int WSS_PlayStart(void)
+@@ -129,7 +131,7 @@ static int WSS_PlayStart(void)
+ 
+ 	/* Set our routine to be called during WSS IRQs */
+ 	buff_tail = 0;
+-	wss.timer_callback = WSS_Callback;
++	wss.timer_callback = NULL;
+ 
+ 	/* Start cyclic DMA transfer */
+ 	if (!wss_start_dma(((md_mode & DMODE_16BITS) ? WSSMODE_16BITS | WSSMODE_SIGNED : 0) |
