@@ -1,0 +1,197 @@
+diff --git a/libmikmod/dos/config.h b/libmikmod/dos/config.h
+index 0bf2893..df3a76b 100644
+--- a/libmikmod/dos/config.h
++++ b/libmikmod/dos/config.h
+@@ -20,11 +20,11 @@
+ /*#define DRV_STDOUT*/
+ 
+ /* Define if you want an .aiff file writer driver */
+-#define DRV_AIFF
++/*#define DRV_AIFF*/
+ /* Define if you want a raw pcm data file writer driver */
+-#define DRV_RAW
++/*#define DRV_RAW*/
+ /* Define if you want a .wav file writer driver */
+-#define DRV_WAV
++/*#define DRV_WAV*/
+ 
+ /* Define if the Gravis UltraSound driver is compiled */
+ #define DRV_ULTRA
+diff --git a/libmikmod/drivers/dos/dosdma.h b/libmikmod/drivers/dos/dosdma.h
+index eac98d6..06fd162 100644
+--- a/libmikmod/drivers/dos/dosdma.h
++++ b/libmikmod/drivers/dos/dosdma.h
+@@ -176,6 +176,17 @@ typedef struct dma_buffer_s {
+ 	unsigned char channel;		/* The DMA channel */
+ } dma_buffer;
+ 
++/* Nuku DOS build: the host program (Free Pascal go32v2) may move its memory
++   block when the heap grows, and __djgpp_conventional_base is not refreshed
++   then. Recompute the near pointer to the DMA buffer from the current base
++   on every access instead of trusting the cached 'linear' field. */
++#ifdef __DJGPP__
++#include <sys/nearptr.h>
++#define dma_linear(b) ((unsigned char *)((b)->physical - (unsigned long)__djgpp_base_address))
++#else
++#define dma_linear(b) ((b)->linear)
++#endif
++
+ /* Allocate a block of memory suitable for using as a DMA buffer */
+ extern dma_buffer *dma_allocate(unsigned int channel, unsigned int size);
+ /* Deallocate a DMA buffer */
+diff --git a/libmikmod/drivers/dos/dosgus.c b/libmikmod/drivers/dos/dosgus.c
+index ff76ff3..c8a36c6 100644
+--- a/libmikmod/drivers/dos/dosgus.c
++++ b/libmikmod/drivers/dos/dosgus.c
+@@ -539,8 +539,8 @@ static void __gus_transfer_dma(unsigned long address, unsigned char *source,
+ 		bytes_left -= cur_size;
+ 		dest_addr = address;
+ 
+-		if (gus.dma_buff->linear != source)
+-			memmove(gus.dma_buff->linear, source, cur_size);
++		if (dma_linear(gus.dma_buff) != source)
++			memmove(dma_linear(gus.dma_buff), source, cur_size);
+ 		source += cur_size;
+ 		address += cur_size;
+ 
+diff --git a/libmikmod/drivers/dos/dossb.c b/libmikmod/drivers/dos/dossb.c
+index 4361c1c..16e83b2 100644
+--- a/libmikmod/drivers/dos/dossb.c
++++ b/libmikmod/drivers/dos/dossb.c
+@@ -99,6 +99,33 @@ static void NO_REORDER INTERRUPT_ATTRIBUTES sb_irq_end()
+ 	nop();
+ }
+ 
++/* Nuku DOS build: make sure the second (16-bit) DMA controller really
++   answers before using the SB16 high DMA channel. DOSBox removes that
++   controller when Tandy sound is enabled (tandy=on), but still reports
++   "H5" in BLASTER; 16-bit playback then never starts. Write a test count
++   to the (masked) channel and read it back; unanswered ports read 0xFF. */
++static boolean __sb_hdma_present(int channel)
++{
++	unsigned int base, mask_port, ff_port, cnt;
++	int old_ints;
++	if (channel < 5 || channel > 7)
++		return FALSE;
++	base = 0xc0 + (channel - 4) * 4;	/* address port; count = base+2 */
++	mask_port = 0xd4;
++	ff_port = 0xd8;
++	old_ints = disable();
++	outportb(mask_port, 0x04 | (channel - 4));	/* mask the channel */
++	outportb(ff_port, 0);
++	outportb(base + 2, 0x34);
++	outportb(base + 2, 0x12);
++	outportb(ff_port, 0);
++	cnt = inportb(base + 2);
++	cnt |= inportb(base + 2) << 8;
++	if (old_ints)
++		enable();
++	return cnt == 0x1234;
++}
++
+ static boolean __sb_reset()
+ {
+ 	/* Disable the output */
+@@ -352,7 +379,7 @@ boolean sb_detect()
+ 
+ 	if (sb.dspver >= SBVER_PRO)
+ 		sb.caps |= SBMODE_STEREO;
+-	if (sb.dspver >= SBVER_16 && sb.dma16)
++	if (sb.dspver >= SBVER_16 && sb.dma16 && __sb_hdma_present(sb.dma16))
+ 		sb.caps |= SBMODE_16BITS;
+ 	if (sb.dspver < SBVER_20)
+ 		sb.maxfreq_mono = 22222;
+@@ -489,9 +516,9 @@ boolean sb_start_dma(unsigned char mode, unsigned int freq)
+ 	/* Fill DMA buffer with silence */
+ 	dmabuffsize = sb.dma_buff->size;
+ 	if (mode & SBMODE_SIGNED)
+-		memset(sb.dma_buff->linear, 0, dmabuffsize);
++		memset(dma_linear(sb.dma_buff), 0, dmabuffsize);
+ 	else
+-		memset(sb.dma_buff->linear, 0x80, dmabuffsize);
++		memset(dma_linear(sb.dma_buff), 0x80, dmabuffsize);
+ 
+ 	/* Prime DMA for transfer */
+ 	dma_start(sb.dma_buff, dmabuffsize, DMA_MODE_WRITE | DMA_MODE_AUTOINIT);
+@@ -554,13 +581,18 @@ void sb_query_dma(unsigned int *dma_size, unsigned int *dma_pos)
+ 	*dma_size = sb.dma_buff->size;
+ 	/* It can happen we try to read DMA count when HI/LO bytes will be
+ 	   inconsistent */
+-	for (;;) {
++	int tries;
++	for (tries = 0;; tries++) {
+ 		unsigned int dma_left_test;
+ 		dma_clear_ff(sb.dma_buff->channel);
+ 		dma_left_test = dma_get_count(sb.dma_buff->channel);
+ 		dma_left = dma_get_count(sb.dma_buff->channel);
+ 		if ((dma_left >= dma_left_test) && (dma_left - dma_left_test < 10))
+ 			break;
++		/* Nuku DOS build: never spin forever on a DMA counter that
++		   does not behave (missing or busy controller) */
++		if (tries > 1000)
++			break;
+ 	}
+ 	*dma_pos = *dma_size - dma_left;
+ }
+diff --git a/libmikmod/drivers/dos/doswss.c b/libmikmod/drivers/dos/doswss.c
+index 844e492..a581fa9 100644
+--- a/libmikmod/drivers/dos/doswss.c
++++ b/libmikmod/drivers/dos/doswss.c
+@@ -493,9 +493,9 @@ boolean wss_start_dma(unsigned char mode, unsigned int freq)
+ 	/* Fill DMA buffer with silence */
+ 	dmabuffsize = wss.dma_buff->size;
+ 	if (mode & WSSMODE_SIGNED)
+-		memset(wss.dma_buff->linear, 0, dmabuffsize);
++		memset(dma_linear(wss.dma_buff), 0, dmabuffsize);
+ 	else
+-		memset(wss.dma_buff->linear, 0x80, dmabuffsize);
++		memset(dma_linear(wss.dma_buff), 0x80, dmabuffsize);
+ 
+ 	/* Check data size and build a WSSR_PLAY_FORMAT value accordingly */
+ 	wss.samples = dmabuffsize;
+diff --git a/libmikmod/drivers/drv_sb.c b/libmikmod/drivers/drv_sb.c
+index 2b76f8d..61d5f3a 100644
+--- a/libmikmod/drivers/drv_sb.c
++++ b/libmikmod/drivers/drv_sb.c
+@@ -122,15 +122,15 @@ static void SB_Callback(void)
+ 
+ 	/* If DMA pointer still didn't wrapped around ... */
+ 	if (dma_pos > buff_tail) {
+-		buff_tail += mixer ((SBYTE *)(sb.dma_buff->linear + buff_tail), dma_pos - buff_tail);
++		buff_tail += mixer ((SBYTE *)(dma_linear(sb.dma_buff) + buff_tail), dma_pos - buff_tail);
+ 		/* If we arrived right to the DMA buffer end, jump to the beginning */
+ 		if (buff_tail >= dma_size)
+ 			buff_tail = 0;
+ 	} else {
+ 		/* If wrapped around, fill first to the end of buffer */
+-		mixer ((SBYTE *)(sb.dma_buff->linear + buff_tail), dma_size - buff_tail);
++		mixer ((SBYTE *)(dma_linear(sb.dma_buff) + buff_tail), dma_size - buff_tail);
+ 		/* Now fill from buffer beginning to current DMA pointer */
+-		buff_tail = mixer ((SBYTE *)sb.dma_buff->linear, dma_pos);
++		buff_tail = mixer ((SBYTE *)dma_linear(sb.dma_buff), dma_pos);
+ 	}
+ }
+ 
+diff --git a/libmikmod/drivers/drv_wss.c b/libmikmod/drivers/drv_wss.c
+index f2b012f..53ad3c8 100644
+--- a/libmikmod/drivers/drv_wss.c
++++ b/libmikmod/drivers/drv_wss.c
+@@ -105,15 +105,15 @@ static void WSS_Callback(void)
+ 
+ 	/* If DMA pointer still didn't wrapped around ... */
+ 	if (dma_pos > buff_tail) {
+-		buff_tail += mixer ((SBYTE *)(wss.dma_buff->linear + buff_tail), dma_pos - buff_tail);
++		buff_tail += mixer ((SBYTE *)(dma_linear(wss.dma_buff) + buff_tail), dma_pos - buff_tail);
+ 		/* If we arrived right to the DMA buffer end, jump to the beginning */
+ 		if (buff_tail >= dma_size)
+ 			buff_tail = 0;
+ 	} else {
+ 		/* If wrapped around, fill first to the end of buffer */
+-		mixer ((SBYTE *)(wss.dma_buff->linear + buff_tail), dma_size - buff_tail);
++		mixer ((SBYTE *)(dma_linear(wss.dma_buff) + buff_tail), dma_size - buff_tail);
+ 		/* Now fill from buffer beginning to current DMA pointer */
+-		buff_tail = mixer ((SBYTE *)wss.dma_buff->linear, dma_pos);
++		buff_tail = mixer ((SBYTE *)dma_linear(wss.dma_buff), dma_pos);
+ 	}
+ }
+ 

@@ -88,7 +88,12 @@ initialization
   if not sound_ok then
     report:='NUKU sound: init failed: '+strpas(MikMod_strerror(MikMod_errno))
   else
+  begin
     report:='NUKU sound: '+device_name(md_device);
+    if md_device in [1..3] then
+      if (md_mode and DMODE_16BITS)<>0 then report:=report+', 16-bit'
+                                       else report:=report+', 8-bit';
+  end;
   report:=report+'   BLASTER='+GetEnv('BLASTER');
   if GetEnv('ULTRASND')<>'' then report:=report+'  ULTRASND='+GetEnv('ULTRASND');
   writeln(report);
