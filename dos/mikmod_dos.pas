@@ -27,6 +27,7 @@ function  MikMod_strerror(code:longint):PChar; cdecl; external;
 function  Player_Load(fname:PChar; maxchan:longint; curious:longint):PMODULE; cdecl; external;
 procedure Player_Start(m:PMODULE); cdecl; external;
 procedure Player_Stop; cdecl; external;
+function  Player_Active:longint; cdecl; external;
 procedure Player_Free(m:PMODULE); cdecl; external;
 
 function  Sample_Load(fname:PChar):PSAMPLE; cdecl; external;
