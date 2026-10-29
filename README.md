@@ -22,8 +22,13 @@ to SDL 1.2 that, as its README said, did not compile or work. Here it builds and
 
 - **DOS** (DOSBox or a real PC): [Nuku-DOS.zip](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-DOS.zip).
   In DOSBox, drag `NUKU.BAT` onto the DOSBox icon.
-- **Windows 64-bit**: [Nuku-win64-port2019.zip](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win64-port2019.zip)
-- **Windows 32-bit**: [Nuku-win32-port2019.zip](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win32-port2019.zip)
+- **Windows**, two flavours of the same game:
+  - *enhanced* (from `master`): window scaled to your screen, F9 window size, F10 fullscreen.
+    [64-bit](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win64-enhanced.zip) ·
+    [32-bit](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win32-enhanced.zip)
+  - *port2019* (from `port2019`): the 2019 port with only the fixes it needed, 640×400 window with a debug console.
+    [64-bit](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win64-port2019.zip) ·
+    [32-bit](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win32-port2019.zip)
 
 Unpack the whole folder and run the game from it. Each archive has a README with the controls.
 
@@ -43,8 +48,8 @@ Player 2: A/C to move, S to jump, V for action.
 
 | Branch | What it is |
 |---|---|
-| `master` | DOS build (VGA mode 13h, Sound Blaster/GUS/WSS) plus a Windows/Linux build with a few conveniences |
-| `port2019` | The 2019 SDL port with only the changes needed to compile and run, for Windows x86/x64 and Linux. The Windows downloads above are built from it |
+| `master` | DOS build (VGA mode 13h, Sound Blaster/GUS/WSS) plus a Windows/Linux build with a few conveniences. The DOS and *enhanced* Windows downloads are built from it |
+| `port2019` | The 2019 SDL port with only the changes needed to compile and run, for Windows x86/x64 and Linux. The *port2019* Windows downloads are built from it |
 
 ### What was changed
 
