@@ -21,7 +21,8 @@ to SDL 1.2 that, as its README said, did not compile or work. Here it builds and
 ## Download and play
 
 - **DOS** (DOSBox or a real PC): [Nuku-DOS.zip](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-DOS.zip).
-  In DOSBox, drag `NUKU.BAT` onto the DOSBox icon.
+  Start the game with `NUKU.BAT`, both in DOSBox and on real hardware: it loads the DPMI host
+  first and unloads it on exit. In DOSBox you can simply drag `NUKU.BAT` onto the DOSBox icon.
 - **Windows**, two flavours of the same game:
   - *enhanced* (from `master`): window scaled to your screen, F9 window size, F10 fullscreen.
     [64-bit](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win64-enhanced.zip) ·
