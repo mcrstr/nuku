@@ -8,14 +8,14 @@ to SDL 1.2 that, as its README said, did not compile or work. Here it builds and
 ## Screenshots
 
 <p>
-  <img src="screenshots/screen1.png" width="32%" alt="Bonus level intro">
+  <img src="screenshots/screen1.png" width="32%" alt="Main menu">
   <img src="screenshots/screen2.png" width="32%" alt="Bonus level">
   <img src="screenshots/screen3.png" width="32%" alt="Crossing the river, level intro">
 </p>
 <p>
   <img src="screenshots/screen4.png" width="32%" alt="Level with mountains">
   <img src="screenshots/screen5.png" width="32%" alt="Boss fight">
-  <img src="screenshots/screen6.png" width="32%" alt="Main menu">
+  <img src="screenshots/screen6.png" width="32%" alt="Bonus level intro">
 </p>
 
 ## Branches
