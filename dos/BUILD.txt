@@ -1,39 +1,43 @@
-Сборка NUKU.EXE для DOS (32-битный защищённый режим, go32v2)
+Building NUKU.EXE for DOS (32-bit protected mode, go32v2)
 
-Общий игровой код (nuku.pas, nukumain, nukunit, nukusupl, fastkeys, nuku_log)
-одинаков для всех платформ. Под DOS вместо SDL подставляются модули из этой папки:
-  sdl.pas            коды клавиш, часы в миллисекундах (BIOS-тики + счётчик PIT), задержка
-  nuku_screen.pas    VGA mode 13h, палитра через порты $3C8/$3C9, копирование в A000:0000
-  nuku_keyboard.pas  свой обработчик IRQ1, очередь скан-кодов
+The game code (nuku.pas, nukumain, nukunit, nukusupl, fastkeys, nuku_log) is the same
+for all platforms. On DOS the units in this folder take the place of SDL:
+  sdl.pas            key codes, a millisecond clock (BIOS ticks + PIT counter), delay
+  nuku_screen.pas    VGA mode 13h, palette through ports $3C8/$3C9, copy to A000:0000
+  nuku_keyboard.pas  own IRQ1 handler with a scancode queue
   nuku_music.pas     libmikmod (Sound Blaster, GUS, WSS)
-  mikmod_dos.pas     статическая привязка к libmikmod.a
+  mikmod_dos.pas     static binding to libmikmod.a
 
-Что нужно:
-1. Free Pascal 3.2.2 с кросс-компилятором под go32v2:
+Diagnostic programs (not part of the game):
+  sndtest.pas + sbinfo.c   plays music for 15 s, prints Sound Blaster IRQ/DMA state
+  sbdiag.c                 the same in plain C (DJGPP)
+
+Requirements:
+1. Free Pascal 3.2.2 with a go32v2 cross compiler:
      git clone --depth 1 --branch release_3_2_2 https://github.com/fpc/FPCSource
      make crossall CPU_TARGET=i386 OS_TARGET=go32v2 BINUTILSPREFIX=i586-pc-msdosdjgpp- FPC=ppcx64
-   Важно: в rtl/i386/i386.inc отключить USE_FASTMOVE для GO32V2 и пересобрать rtl.
-   Иначе Move копирует память через x87 fild/fistp, а DOSBox эмулирует FPU
-   с точностью double и портит каждый восьмой байт (вертикальные полосы на экране).
-2. DJGPP (кросс-binutils, gcc, libc): https://github.com/andrewwutw/build-djgpp
-3. libmikmod (https://github.com/sezero/mikmod): применить dos/libmikmod-dos.patch
+   Important: in rtl/i386/i386.inc disable USE_FASTMOVE for GO32V2 and rebuild the RTL.
+   Otherwise Move copies memory through x87 fild/fistp, and DOSBox emulates the FPU
+   with double precision, corrupting every eighth byte (vertical stripes on screen).
+2. DJGPP (cross binutils, gcc, libc): https://github.com/andrewwutw/build-djgpp
+3. libmikmod (https://github.com/sezero/mikmod) with dos/libmikmod-dos.patch applied:
      git apply libmikmod-dos.patch
-   Что делает патч:
-   - отключает запись звука в файл (DRV_WAV, DRV_AIFF, DRV_RAW);
-   - исправляет адрес DMA-буфера: исходный код брал следующую границу 64 КБ
-     вместо начала выделенного блока, и звук писался в чужую память DOS;
-   - сводит звук Sound Blaster и WSS в основном цикле программы, а не в
-     обработчике прерывания: иначе прерывание вмешивалось в смену музыки
-     и портило память при загрузке уровней; если программа долго не
-     обновляет звук, прерывание заполняет буфер тишиной;
-   - проверяет наличие второго контроллера DMA (DOSBox убирает его при
-     tandy=on) и в этом случае переводит SB16 на 8-битный канал;
-   - ограничивает опрос счётчика DMA, чтобы драйвер не мог зависнуть;
-   - пересчитывает адрес DMA-буфера от текущей базы программы.
-   Затем в libmikmod/dos:
+   What the patch does:
+   - disables writing sound to a file (DRV_WAV, DRV_AIFF, DRV_RAW);
+   - fixes the DMA buffer address: the original code used the next 64 KB boundary
+     instead of the start of the allocated block, so sound was written over DOS memory;
+   - mixes Sound Blaster and WSS audio in the program's main loop instead of the
+     interrupt handler, which interfered with song changes and corrupted memory while
+     loading levels; if the program does not update sound for a while, the interrupt
+     fills the buffer with silence;
+   - checks that the second DMA controller is present (DOSBox removes it when
+     tandy=on) and otherwise switches SB16 to the 8-bit channel;
+   - bounds the DMA counter polling so the driver cannot hang;
+   - recomputes the DMA buffer pointer from the program's current base address.
+   Then in libmikmod/dos:
      make -f Makefile.dj CROSS=i586-pc-msdosdjgpp
-4. Сборка:
+4. Build:
      FPC_CROSS=.../compiler/ppcross386 FPC_RTL=.../rtl/units/go32v2 \
      DJGPP=.../djgpp MIKMOD_DOS=.../libmikmod/dos dos/build_dos.sh
-5. Для запуска нужен DPMI-сервер: HDPMI32.EXE из HX DOS Extender
-   (https://github.com/Baron-von-Riedesel/HX) или CWSDPMI.EXE.
+5. To run it you need a DPMI host: HDPMI32.EXE from the HX DOS Extender
+   (https://github.com/Baron-von-Riedesel/HX) or CWSDPMI.EXE.
