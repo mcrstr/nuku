@@ -5,6 +5,19 @@ A game programmed in 1996 by Juan Linietsky and Pablo Selener in Borland Pascal 
 This fork is based on [reduz/nuku](https://github.com/reduz/nuku), the 2019 port of the game
 to SDL 1.2 that, as its README said, did not compile or work. Here it builds and runs.
 
+## Screenshots
+
+<p>
+  <img src="screenshots/screen1.png" width="32%" alt="Bonus level intro">
+  <img src="screenshots/screen2.png" width="32%" alt="Bonus level">
+  <img src="screenshots/screen3.png" width="32%" alt="Crossing the river, level intro">
+</p>
+<p>
+  <img src="screenshots/screen4.png" width="32%" alt="Level with mountains">
+  <img src="screenshots/screen5.png" width="32%" alt="Boss fight">
+  <img src="screenshots/screen6.png" width="32%" alt="Main menu">
+</p>
+
 ## Branches
 
 | Branch | What it is |
