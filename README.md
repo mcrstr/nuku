@@ -29,8 +29,10 @@ Built from this branch:
 Unpack the whole folder and run `nuku.exe`. A console window with debug messages opens
 next to the game; that is how the 2019 port works.
 
-The DOS build is [Nuku-DOS.zip](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-DOS.zip),
-built from `master`.
+Built from `master`: the DOS build, [Nuku-DOS.zip](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-DOS.zip),
+and an *enhanced* Windows build with window scaling and fullscreen,
+[64-bit](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win64-enhanced.zip) ·
+[32-bit](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win32-enhanced.zip).
 
 **Controls:** arrows to move, Up to jump, Right Ctrl for action, Enter in menus, F11 to pause.
 Player 2: A/C to move, S to jump, V for action.
