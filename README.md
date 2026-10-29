@@ -8,6 +8,19 @@ the version with extra conveniences are in the `master` branch.
 
 Ready-made builds for Windows x86 and x64 are in [Releases](../../releases).
 
+## Screenshots
+
+<p>
+  <img src="screenshots/screen1.png" width="32%" alt="Bonus level intro">
+  <img src="screenshots/screen2.png" width="32%" alt="Bonus level">
+  <img src="screenshots/screen3.png" width="32%" alt="Crossing the river, level intro">
+</p>
+<p>
+  <img src="screenshots/screen4.png" width="32%" alt="Level with mountains">
+  <img src="screenshots/screen5.png" width="32%" alt="Boss fight">
+  <img src="screenshots/screen6.png" width="32%" alt="Main menu">
+</p>
+
 ## What was changed
 
 - inline 16/32-bit assembly replaced with equivalent Pascal (tile and sprite blits, palette, RNG);
