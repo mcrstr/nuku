@@ -40,6 +40,49 @@ Esc during a level skips to the next one; to quit a level, pause with F11 and pr
 
 ## For developers
 
+### Why the 2019 port did not build or run
+
+Notes for anyone who worked on the port, in the order the problems showed up.
+
+**It did not compile**
+
+- *SDL binding.* The port was written against a JEDI-SDL style binding with separate units
+  (`sdl_video`, `sdl_events`, `sdl_keyboard`, `sdl_timer`) and names like `SDL_Surface`,
+  `SDL_ColorArray`, `event.eventtype`, `SDL_EVENTQUIT`. Free Pascal ships a single `sdl` unit
+  with `TSDL_Surface`, `PSDL_ColorArray`, `event.type_`, `SDL_QUITEV`. Only the names changed.
+- *Inline assembly.* `nukusupl.pas` and `nukunit.pas` still had 16/32-bit `asm` blocks:
+  `push edi`/`pop esi` and 16-bit address arithmetic are rejected on x86_64, and `in`/`out`
+  to VGA and PIT ports cannot work in a user-mode program anyway. They were replaced with
+  Pascal that does the same thing, quirks included: `MoveN`, `MoveI`, `MovesI` (transparent
+  sprite copies), `MoveWPal`, `Perturb` (the RNG, including the carry from `shl`), `boxblue`,
+  the tile blitter in `PutThing`, and the timer counters in `INT8PROC`. `PortOut`/`port`
+  became no-ops, as nothing in the SDL code path needs them.
+
+**It compiled, then crashed**
+
+- *FPU exceptions.* Free Pascal unmasks FPU exceptions, the C libraries (SDL, X11, libmikmod)
+  expect them masked. The first floating-point operation inside SDL ended with
+  `EInvalidOp: Invalid floating point operation`. Fixed with `SetExceptionMask`.
+- *Heap corruption.* `letra_rec` is `array[0..1959]`, but the font loader in `init` copies
+  36 characters × 7 × 8 = 2016 bytes into it. The extra 56 bytes overwrite the heap and glibc
+  aborts with `corrupted double-linked list` during startup. The array is now
+  `[0..2015]`.
+- *C prototypes.* `copy_and_filter_pas.pp` declared `p_w, p_h: integer`. Without `{$mode objfpc}`
+  `integer` is 16-bit in Free Pascal, while the C side takes `int`, so the filter received
+  garbage sizes. They are `longint` now.
+
+**It ran, but levels were broken**
+
+- *Level maps.* `initlev` reads `64000` bytes of the `.map` file, but each map is
+  524 × 125 = 65500 bytes. The last 1500 bytes stayed zero, so the ground was missing at the
+  start of level 1. It now reads 65500.
+
+**Not fixed, left as in the port**
+
+- `key[$19]` in `nukunit.pas` refills energy. `$19` is the DOS scancode of P; with SDL key codes
+  the check never fires.
+- Esc during a level sets `finished`, the same flag as reaching the end, so it skips the level.
+
 ### What was changed
 
 - inline 16/32-bit assembly replaced with equivalent Pascal (tile and sprite blits, palette, RNG);
