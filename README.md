@@ -18,16 +18,35 @@ to SDL 1.2 that, as its README said, did not compile or work. Here it builds and
   <img src="screenshots/screen6.png" width="32%" alt="Bonus level intro">
 </p>
 
-## Branches
+## Download and play
+
+- **DOS** (DOSBox or a real PC): [Nuku-DOS.zip](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-DOS.zip).
+  In DOSBox, drag `NUKU.BAT` onto the DOSBox icon.
+- **Windows 64-bit**: [Nuku-win64-port2019.zip](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win64-port2019.zip)
+- **Windows 32-bit**: [Nuku-win32-port2019.zip](https://github.com/mcrstr/nuku/releases/latest/download/Nuku-win32-port2019.zip)
+
+Unpack the whole folder and run the game from it. Each archive has a README with the controls.
+
+**Controls:** arrows to move, Up to jump, Right Ctrl for action, Enter in menus, F11 to pause.
+Player 2: A/C to move, S to jump, V for action.
+
+### Known issues
+
+- DOS build: sound reportedly stops on the final boss level.
+- Esc during a level skips to the next one. To quit a level, pause with F11 and press Esc.
+- The cheat that refilled energy (`key[$19]` in `nukunit.pas`, the P key in DOS) uses a DOS
+  scancode, so it does not work with SDL key codes. Left as in the 2019 port.
+
+## For developers
+
+### Branches
 
 | Branch | What it is |
 |---|---|
 | `master` | DOS build (VGA mode 13h, Sound Blaster/GUS/WSS) plus a Windows/Linux build with a few conveniences |
-| `port2019` | The 2019 SDL port with only the changes needed to compile and run, for Windows x86/x64 and Linux |
+| `port2019` | The 2019 SDL port with only the changes needed to compile and run, for Windows x86/x64 and Linux. The Windows downloads above are built from it |
 
-Ready-made builds are in [Releases](../../releases).
-
-## What was changed
+### What was changed
 
 Shared by both branches, in the game code (`nukunit`, `nukumain`, `nukusupl`):
 
@@ -45,7 +64,7 @@ Shared by both branches, in the game code (`nukunit`, `nukumain`, `nukusupl`):
 - on Windows/Linux: integer window scaling (F9), fullscreen (F10, Alt+Enter), a log file
   instead of console output, and the Eagle filter ported from C to Pascal.
 
-## Building
+### Building
 
 **DOS** (`master`): see [dos/BUILD.txt](dos/BUILD.txt). Needs a Free Pascal 3.2.2
 cross compiler for go32v2, DJGPP and the patched libmikmod. To run it you need a DPMI host,
@@ -56,15 +75,7 @@ such as HDPMI32 from the [HX DOS Extender](https://github.com/Baron-von-Riedesel
 **Windows** (cross-compiled from Linux): `./build.sh win64` with a win64 Free Pascal RTL and SDL unit,
 see the comments in `build.sh`. Put `SDL.dll` and `libmikmod-3.dll` next to the exe.
 
-## Known issues
-
-- DOS build: sound reportedly stops on the final boss level.
-- The cheat that refilled energy (`key[$19]` in `nukunit.pas`, the P key in DOS) uses a DOS
-  scancode, so it does not work with SDL key codes. Left as in the 2019 port.
-- Esc during a level counts it as finished; to quit a level, pause with F11 and press Esc.
-
 ## License
 
 The game is under the MIT license, see [LICENSE.md](LICENSE.md).
 SDL 1.2 and libmikmod are under the LGPL; the libmikmod patch and build instructions are in `dos/`.
-
